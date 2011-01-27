@@ -8,49 +8,57 @@ use B::Hooks::OP::Check;
 use Devel::StackTrace;
 use XSLoader;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 our %TRUE;
 
 XSLoader::load(__PACKAGE__, $VERSION);
 
-# XXX CopFILE(&PL_compiling) gives the wrong result here (it works in the OP checker in the XS)
+# XXX CopFILE(&PL_compiling) gives the wrong result here (it works in the OP checker in the XS).
+# return the full path of the file that's currently being compiled
 sub ccfile() {
-    my ($ccfile, $ccline);
+    my ($file, $source, $line);
     my $trace = Devel::StackTrace->new;
 
+    # find the innermost require frame
+    #
+    # for "use Foo::Bar" or "require Foo::Bar", the evaltext contains "Foo/Bar.pm", and
+    # the filename/line refer to the file where the use/require statement appeared.
+
+    # work from the innermost frame out
     while (my $frame = $trace->next_frame) {
-        my $sub = $frame->subroutine;
-        next unless ($sub =~ /::BEGIN$/);
-        my $prev_frame = $trace->prev_frame;
-        $ccfile = $prev_frame->filename;
-        $ccline = $prev_frame->line;
+        next unless ($frame->is_require);
+        my $required = $frame->evaltext;
+
+        if (defined($file = $INC{$required})) {
+            $source = $frame->filename;
+            $line = $frame->line;
+        } else { # shouldn't happen
+            warn "true: can't find required file ($required) in \%INC";
+        }
+
         last;
     }
 
-    if (defined($ccfile) && not(length($ccfile))) {
-        ($ccfile, $ccline) = (undef, undef);
-    }
-
-    return wantarray ? ($ccfile, $ccline) : $ccfile;
+    return wantarray ? ($file, $source, $line) : $file;
 }
 
 # XXX should add a debug option
 sub import {
-    my ($ccfile, $ccline) = ccfile();
+    my ($file, $source, $line) = ccfile();
 
-    if (defined($ccfile) && not($TRUE{$ccfile})) {
-        $TRUE{$ccfile} = 1;
-        # warn "enabling true for $ccfile at line $ccline: ", pp(\%TRUE), $/;
+    if (defined($file) && not($TRUE{$file})) {
+        $TRUE{$file} = 1;
+        # warn "true: enabling true for $file at $source line $line", $/;
         xs_enter();
     }
 }
 
 sub unimport {
-    my ($ccfile, $ccline) = ccfile();
+    my ($file, $source, $line) = ccfile();
 
-    if (defined($ccfile) && $TRUE{$ccfile}) {
-        # warn "disabling true for $ccfile at line $ccline: ", pp(\%TRUE), $/;
-        delete $TRUE{$ccfile};
+    if (defined($file) && $TRUE{$file}) {
+        # warn "true: disabling true for $file at $source line $line", $/;
+        delete $TRUE{$file};
         xs_leave() unless (%TRUE);
     }
 }
@@ -83,7 +91,7 @@ Perl's C<require> builtin (and its C<use> wrapper) requires the files it loads t
 This is usually accomplished by placing a single
 
     1;
-    
+
 statement at the end of included scripts or modules. It's not onerous to add but it's
 a speed bump on the Perl novice's road to enlightenment. In addition, it appears to be
 a I<non-sequitur> to the uninitiated, leading some to attempt to mitigate its appearance
@@ -94,7 +102,7 @@ with a comment:
 or:
 
     1; # Do not remove this line
-    
+
 or even:
 
     1; # Must end with this, because Perl is bogus.
@@ -166,7 +174,7 @@ chocolateboy, E<lt>chocolate@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2010 by chocolateboy
+Copyright (C) 2010-2011 by chocolateboy
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,

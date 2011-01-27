@@ -30,7 +30,7 @@ WriteMakefile(
     VERSION_FROM  => 'lib/true.pm',
     PREREQ_PM => {
         %XS_PREREQUISITES,
-        'Devel::StackTrace' => '1.22',
+        'Devel::StackTrace' => '1.27',
     },
     ABSTRACT_FROM => 'lib/true.pm',
     AUTHOR        => 'chocolateboy <chocolate@cpan.org>',
@@ -38,14 +38,18 @@ WriteMakefile(
     DEFINE        => '',
     INC           => '-I.',
     OPTIMIZE      => $OPTIMIZE,
-    ($ExtUtils::MakeMaker::VERSION >= 6.46 ?
+    ($ExtUtils::MakeMaker::VERSION gt 6.46 ?
         (META_MERGE => {
             configure_requires => {
-                'ExtUtils::Depends' => '0.302',
+                'ExtUtils::Depends' => '0.304',
                 %XS_PREREQUISITES
-            }})
+            },
+            resources => {
+                repository => 'http://github.com/chocolateboy/true',
+            },
+        })
         : ()
     ),
-    ($ExtUtils::MakeMaker::VERSION >= 6.31 ? (LICENSE => 'perl') : ()),
+    ($ExtUtils::MakeMaker::VERSION gt 6.31 ? (LICENSE => 'perl') : ()),
     %XS_DEPENDENCIES,
 );

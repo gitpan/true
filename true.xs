@@ -14,20 +14,15 @@
 #define CxOLD_OP_TYPE(cx) (cx->blk_eval.old_op_type)
 #endif
 
-STATIC char * true_ccfile(pTHX);
 STATIC hook_op_check_id TRUE_CHECK_LEAVEEVAL_ID = 0;
 STATIC HV * TRUE_HASH = NULL;
 STATIC OPAnnotationGroup TRUE_ANNOTATIONS = NULL;
 STATIC OP * true_check_leaveeval(pTHX_ OP * o, void * user_data);
 STATIC OP * true_leaveeval(pTHX);
 STATIC U32 TRUE_COMPILING = 0;
-STATIC U32 true_enabled(pTHX_ const char *filename);
+STATIC U32 true_enabled(pTHX_ const char * const filename);
 STATIC void true_leave(pTHX);
-STATIC void true_unregister(pTHX_ const char *filename);
-
-STATIC char * true_ccfile(pTHX) {
-    return CopFILE(&PL_compiling);
-}
+STATIC void true_unregister(pTHX_ const char * const filename);
 
 STATIC void true_leave(pTHX) {
     if (TRUE_COMPILING != 1) {
@@ -44,18 +39,18 @@ STATIC U32 true_enabled(pTHX_ const char * const filename) {
     return svp && *svp && SvOK(*svp) && SvTRUE(*svp);
 }
 
-STATIC void true_unregister(pTHX_ const char *filename) {
-    /* warn("deleting %s\n", filename); */
-    (void)hv_delete(TRUE_HASH, filename, (I32)strlen(filename), G_DISCARD);
+STATIC void true_unregister(pTHX_ const char * const filename) {
+    /* warn("true: deleting %s\n", filename); */
+    (void)hv_delete(TRUE_HASH, filename, strlen(filename), G_DISCARD);
 
     if (HvKEYS(TRUE_HASH) == 0) {
-        /* warn("hash is empty: disabling true\n"); */
+        /* warn("true: hash is empty: disabling true\n"); */
         true_leave(aTHX);
     }
 }
 
 STATIC OP * true_check_leaveeval(pTHX_ OP * o, void * user_data) {
-    char * ccfile = true_ccfile(aTHX);
+    char * ccfile = CopFILE(&PL_compiling);
     PERL_UNUSED_VAR(user_data);
 
     if (true_enabled(aTHX_ ccfile)) {
@@ -86,10 +81,10 @@ STATIC OP * true_leaveeval(pTHX) {
         true_unregister(aTHX_ filename);
     }
 
-    return CALL_FPTR(annotation->op_ppaddr)(aTHX);
+    return annotation->op_ppaddr(aTHX);
 }
 
-MODULE = true                PACKAGE = true                
+MODULE = true                PACKAGE = true
 
 PROTOTYPES: ENABLE
 
@@ -120,4 +115,3 @@ xs_leave()
     PROTOTYPE:
     CODE:
         true_leave(aTHX);
-
