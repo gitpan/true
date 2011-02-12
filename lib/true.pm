@@ -8,8 +8,15 @@ use B::Hooks::OP::Check;
 use Devel::StackTrace;
 use XSLoader;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 our %TRUE;
+
+# Special package to help with dependencies.
+# See NOTES in the docs.
+{
+    package true::VERSION;
+    our $VERSION = $true::VERSION;
+}
 
 XSLoader::load(__PACKAGE__, $VERSION);
 
@@ -152,17 +159,26 @@ Disable the "automatically return true" behaviour for the currently-compiling fi
 
 None by default.
 
+=head1 NOTES
+
+Because some versions of L<YAML::XS> may interpret the key of C<true>
+as a boolean, you may have trouble declaring a dependency on true.pm.
+You can work around this by declaring a dependency on the package C<true::VERSION>,
+which has the same version as true.pm.
+
 =head1 SEE ALSO
 
 =over
 
-=item * L<Modern::Perl|Modern::Perl>
-
-=item * L<Toolkit|Toolkit>
-
 =item * L<latest|latest>
 
+=item * L<Modern::Perl|Modern::Perl>
+
+=item * L<nonsense|nonsense>
+
 =item * L<perl5i|perl5i>
+
+=item * L<Toolkit|Toolkit>
 
 =item * L<uni::perl|uni::perl>
 
